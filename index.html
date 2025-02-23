@@ -1,183 +1,183 @@
-!DOCTYPE html
-html lang=en
-head
-  meta charset=UTF-8 
-  titleMON Gambletitle
-  script src=httpscdn.jsdelivr.netnpmethers@5.7.2distethers.umd.min.jsscript
-  style
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <title>MON Gamble</title>
+  <script src="https://cdn.jsdelivr.net/npm/ethers@5.7.2/dist/ethers.umd.min.js"></script>
+  <style>
     body {
-      font-family Arial, sans-serif;
-      background linear-gradient(135deg, #0d47a1, #1976d2);
-      color #fff;
-      text-align center;
-      margin 0;
-      padding 20px;
+      font-family: Arial, sans-serif;
+      background: linear-gradient(135deg, #0d47a1, #1976d2);
+      color: #fff;
+      text-align: center;
+      margin: 0;
+      padding: 20px;
     }
     .container {
-      max-width 500px;
-      margin 40px auto;
-      background rgba(0, 0, 0, 0.6);
-      padding 30px;
-      border-radius 10px;
-      box-shadow 0 4px 10px rgba(0,0,0,0.3);
+      max-width: 500px;
+      margin: 40px auto;
+      background: rgba(0, 0, 0, 0.6);
+      padding: 30px;
+      border-radius: 10px;
+      box-shadow: 0 4px 10px rgba(0,0,0,0.3);
     }
     h2 {
-      margin-bottom 20px;
+      margin-bottom: 20px;
     }
-    input[type=number] {
-      width 80px;
-      padding 10px;
-      font-size 1em;
-      border none;
-      border-radius 5px;
-      margin-bottom 20px;
-      text-align center;
+    input[type="number"] {
+      width: 80px;
+      padding: 10px;
+      font-size: 1em;
+      border: none;
+      border-radius: 5px;
+      margin-bottom: 20px;
+      text-align: center;
     }
     button {
-      padding 10px 20px;
-      font-size 1.1em;
-      color #fff;
-      background-color #ff9800;
-      border none;
-      border-radius 5px;
-      cursor pointer;
-      transition background-color 0.3s ease;
-      margin 10px;
+      padding: 10px 20px;
+      font-size: 1.1em;
+      color: #fff;
+      background-color: #ff9800;
+      border: none;
+      border-radius: 5px;
+      cursor: pointer;
+      transition: background-color 0.3s ease;
+      margin: 10px;
     }
-    buttonhover {
-      background-color #fb8c00;
+    button:hover {
+      background-color: #fb8c00;
     }
     #status {
-      margin-top 20px;
-      font-size 1.1em;
+      margin-top: 20px;
+      font-size: 1.1em;
     }
-     Coin flip animation 
+    /* Coin flip animation */
     .coin {
-      width 100px;
-      height 100px;
-      margin 20px auto;
-      background-image url('httpsi.imgur.comPKxZ4V8.png');  Replace with your coin image URL 
-      background-size cover;
-      border-radius 50%;
-      animation flip 3s ease-out;
-      transform-style preserve-3d;
+      width: 100px;
+      height: 100px;
+      margin: 20px auto;
+      background-image: url('https://i.imgur.com/PKxZ4V8.png'); /* Replace with your coin image URL */
+      background-size: cover;
+      border-radius: 50%;
+      animation: flip 3s ease-out;
+      transform-style: preserve-3d;
     }
     @keyframes flip {
-      0% { transform rotateY(0deg); }
-      100% { transform rotateY(1800deg); }
+      0% { transform: rotateY(0deg); }
+      100% { transform: rotateY(1800deg); }
     }
     .hidden {
-      display none;
+      display: none;
     }
-  style
-head
-body
-  div class=container
-    h2MON Gambleh2
-    pConnect your wallet, place your bet (1-5 MON), and see if you win!p
-    button id=connectWalletButtonConnect Walletbutton
-    div id=walletSection class=hidden
-      pYour wallet is connected!p
-      input type=number id=monAmount min=1 max=5 step=1 placeholder=MON 
-      br 
-      button id=placeBetButtonPlace Betbutton
-    div
-    div id=animationContainer class=hidden
-      div class=coindiv
-      pFlipping the coin...p
-    div
-    p id=statusp
-    p id=resultp
-  div
+  </style>
+</head>
+<body>
+  <div class="container">
+    <h2>MON Gamble</h2>
+    <p>Connect your wallet, place your bet (1-5 MON), and see if you win!</p>
+    <button id="connectWalletButton">Connect Wallet</button>
+    <div id="walletSection" class="hidden">
+      <p>Your wallet is connected!</p>
+      <input type="number" id="monAmount" min="1" max="5" step="1" placeholder="MON" />
+      <br />
+      <button id="placeBetButton">Place Bet</button>
+    </div>
+    <div id="animationContainer" class="hidden">
+      <div class="coin"></div>
+      <p>Flipping the coin...</p>
+    </div>
+    <p id="status"></p>
+    <p id="result"></p>
+  </div>
 
-  script
-     Replace with your deployed contract address
-    const contractAddress = YOUR_CONTRACT_ADDRESS_HERE;
+  <script>
+    // Replace with your deployed contract address
+    const contractAddress = "YOUR_CONTRACT_ADDRESS_HERE";
 
-     Contract ABI (we only need the gamble function and the GambleResult event)
+    // Contract ABI (we only need the gamble function and the GambleResult event)
     const contractABI = [
-      function gamble() external payable,
-      event GambleResult(address indexed player, uint wager, bool win, uint payout)
+      "function gamble() external payable",
+      "event GambleResult(address indexed player, uint wager, bool win, uint payout)"
     ];
 
     let provider;
     let signer;
     let contract;
 
-     Connect wallet function
+    // Connect wallet function
     async function connectWallet() {
-      if (typeof window.ethereum !== undefined) {
+      if (typeof window.ethereum !== "undefined") {
         try {
-           Request wallet connection
-          await window.ethereum.request({ method eth_requestAccounts });
+          // Request wallet connection
+          await window.ethereum.request({ method: "eth_requestAccounts" });
           provider = new ethers.providers.Web3Provider(window.ethereum);
           signer = provider.getSigner();
 
-           Optionally, sign a simple message to verify wallet connection (uncomment if needed)
-           const signature = await signer.signMessage(Wallet connected for MON Gamble);
-           console.log(Signature, signature);
+          // Optionally, sign a simple message to verify wallet connection (uncomment if needed)
+          // const signature = await signer.signMessage("Wallet connected for MON Gamble");
+          // console.log("Signature:", signature);
 
           contract = new ethers.Contract(contractAddress, contractABI, signer);
-          document.getElementById(status).innerText = Wallet connected and verified!;
-          document.getElementById(connectWalletButton).classList.add(hidden);
-          document.getElementById(walletSection).classList.remove(hidden);
+          document.getElementById("status").innerText = "Wallet connected and verified!";
+          document.getElementById("connectWalletButton").classList.add("hidden");
+          document.getElementById("walletSection").classList.remove("hidden");
         } catch (error) {
           console.error(error);
-          document.getElementById(status).innerText = Wallet connection failed.;
+          document.getElementById("status").innerText = "Wallet connection failed.";
         }
       } else {
-        document.getElementById(status).innerText = MetaMask is not installed.;
+        document.getElementById("status").innerText = "MetaMask is not installed.";
       }
     }
 
-     Place bet function
+    // Place bet function
     async function placeBet() {
-      const monAmount = document.getElementById(monAmount).value;
-      if (monAmount  1  monAmount  5) {
-        document.getElementById(status).innerText = Please enter an amount between 1 and 5 MON.;
+      const monAmount = document.getElementById("monAmount").value;
+      if (monAmount < 1 || monAmount > 5) {
+        document.getElementById("status").innerText = "Please enter an amount between 1 and 5 MON.";
         return;
       }
 
-       Show coin flip animation
-      document.getElementById(animationContainer).classList.remove(hidden);
-      document.getElementById(status).innerText = Bet placed. Waiting for transaction confirmation...;
-      document.getElementById(result).innerText = ;
+      // Show coin flip animation
+      document.getElementById("animationContainer").classList.remove("hidden");
+      document.getElementById("status").innerText = "Bet placed. Waiting for transaction confirmation...";
+      document.getElementById("result").innerText = "";
 
-       Delay for coin flip animation (3 seconds)
-      setTimeout(async () = {
-        document.getElementById(animationContainer).classList.add(hidden);
+      // Delay for coin flip animation (3 seconds)
+      setTimeout(async () => {
+        document.getElementById("animationContainer").classList.add("hidden");
 
-         Convert the bet amount to Wei (assuming 1 MON = 1 ETH unit for test purposes)
+        // Convert the bet amount to Wei (assuming 1 MON = 1 ETH unit for test purposes)
         const value = ethers.utils.parseEther(monAmount.toString());
 
         try {
-           This sends the gamble transaction, prompting MetaMask to ask for confirmation
+          // This sends the gamble transaction, prompting MetaMask to ask for confirmation
           const txResponse = await contract.gamble({ value });
-          document.getElementById(status).innerText = Transaction sent! Confirming...;
+          document.getElementById("status").innerText = "Transaction sent! Confirming...";
           const receipt = await txResponse.wait();
 
-           After confirmation, we check the events for the result
-          const event = receipt.events.find(e = e.event === GambleResult);
+          // After confirmation, we check the events for the result
+          const event = receipt.events.find(e => e.event === "GambleResult");
           if (event) {
             const { player, wager, win, payout } = event.args;
             if (win) {
-              document.getElementById(result).innerText = Congratulations, you won! Payout  + ethers.utils.formatEther(payout) +  MON;
+              document.getElementById("result").innerText = "Congratulations, you won! Payout: " + ethers.utils.formatEther(payout) + " MON";
             } else {
-              document.getElementById(result).innerText = Sorry, you lost.;
+              document.getElementById("result").innerText = "Sorry, you lost.";
             }
           } else {
-            document.getElementById(result).innerText = No result event found.;
+            document.getElementById("result").innerText = "No result event found.";
           }
-          document.getElementById(status).innerText = Transaction confirmed!;
+          document.getElementById("status").innerText = "Transaction confirmed!";
         } catch (error) {
           console.error(error);
-          document.getElementById(status).innerText = Transaction failed  + error.message;
+          document.getElementById("status").innerText = "Transaction failed: " + error.message;
         }
-      }, 3000);  3-second delay to simulate coin flip animation
+      }, 3000); // 3-second delay to simulate coin flip animation
     }
 
-    document.getElementById(connectWalletButton).addEventListener(click, connectWallet);
-    document.getElementById(placeBetButton).addEventListener(click, placeBet);
-  script
-body
-html
+    document.getElementById("connectWalletButton").addEventListener("click", connectWallet);
+    document.getElementById("placeBetButton").addEventListener("click", placeBet);
+  </script>
+</body>
+</html>
