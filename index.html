@@ -2,7 +2,7 @@
 <html lang="en">
 <head>
   <meta charset="UTF-8" />
-  <title>MON Gamble</title>
+  <title>MON Gamble (Monad Testnet)</title>
   <!-- Ethers.js -->
   <script src="https://cdn.jsdelivr.net/npm/ethers@5.7.2/dist/ethers.umd.min.js"></script>
   <style>
@@ -62,11 +62,14 @@
 <body>
   <div class="container">
     <h2>MON Gamble (Monad Testnet)</h2>
+    <!-- Connect Wallet -->
     <button id="connectWalletButton">Connect Wallet</button>
     <br />
-    <input type="number" id="monAmount" min="1" max="5" step="1" placeholder="MON Amount (1-5)" />
+    <!-- Wager Input & Place Bet -->
+    <input type="number" id="monAmount" min="1" max="5" step="1" placeholder="MON (1-5)" />
     <button id="placeBetButton">Place Bet</button>
 
+    <!-- Status & Result Messages -->
     <p id="status"></p>
     <p id="result"></p>
   </div>
@@ -76,61 +79,148 @@
      * 1. Monad Testnet Configuration
      ******************************************/
     const MONAD_RPC_URL = "https://testnet-rpc.monad.xyz";
-    const MONAD_CHAIN_ID = 10143;
-    const CONTRACT_ADDRESS = "0xYourMonadContract"; // Replace with your deployed contract address on Monad
+    const MONAD_CHAIN_ID_DEC = 10143; // decimal
+    const MONAD_CHAIN_ID_HEX = "0x279F"; // 10143 in hex
+    const CONTRACT_ADDRESS = "0x224D0F0A9848B0f15B263e75AEb7d066Dd8b663f"; // Replace if needed
+
+    // Update the ABI if your contract has more functions/events
     const CONTRACT_ABI = [
       "function gamble() external payable",
       "event GambleResult(address indexed player, uint wager, bool win, uint payout)"
-      // Add more functions/events if needed
     ];
-
-    // Create a custom network object for Monad
-    const monadNetwork = {
-      name: "monadTestnet",
-      chainId: MONAD_CHAIN_ID
-    };
-
-    // A static provider for Monad testnet (no ENS resolution)
-    const monadProvider = new ethers.providers.StaticJsonRpcProvider(MONAD_RPC_URL, monadNetwork);
 
     let signer;
     let contract;
 
     /******************************************
-     * 2. Connect Wallet (MetaMask)
+     * 2. Prompt User to Add/Switch to Monad
      ******************************************/
-    async function connectWallet() {
-      if (window.ethereum) {
-        try {
-          // Request account access
-          await window.ethereum.request({ method: "eth_requestAccounts" });
-          // Wrap MetaMask as an Ethers provider
-          const tempProvider = new ethers.providers.Web3Provider(window.ethereum, "any");
-
-          // Check if user's MetaMask is on the correct chain
-          const network = await tempProvider.getNetwork();
-          if (network.chainId !== MONAD_CHAIN_ID) {
-            document.getElementById("status").innerText =
-              `Please switch MetaMask to Monad Testnet (chainId: ${MONAD_CHAIN_ID}).`;
-            return;
-          }
-
-          // If on Monad testnet, proceed
-          signer = tempProvider.getSigner();
-          contract = new ethers.Contract(CONTRACT_ADDRESS, CONTRACT_ABI, signer);
-
-          document.getElementById("status").innerText = "Wallet connected on Monad testnet!";
-        } catch (error) {
-          console.error(error);
-          document.getElementById("status").innerText = "Failed to connect wallet.";
-        }
-      } else {
-        document.getElementById("status").innerText = "MetaMask not found. Please install it.";
+    async function switchToMonadTestnet() {
+      try {
+        await window.ethereum.request({
+          method: 'wallet_addEthereumChain',
+          params: [{
+            chainId: MONAD_CHAIN_ID_HEX, // "0x279F"
+            chainName: 'Monad Testnet',
+            nativeCurrency: {
+              name: 'MON',
+              symbol: 'MON',
+              decimals: 18
+            },
+            rpcUrls: [MONAD_RPC_URL],
+            blockExplorerUrls: ['https://testnet-explorer.monad.xyz/']
+          }]
+        });
+      } catch (error) {
+        console.error("User rejected chain switch or error:", error);
+        document.getElementById("status").innerText =
+          "Please switch your wallet to Monad Testnet (Chain ID 10143).";
       }
     }
 
     /******************************************
-     * 3. Place Bet Function
+     * 3. Connect Wallet
+     ******************************************/
+    async function connectWallet() {
+      if (typeof window.ethereum === 'undefined') {
+        document.getElementById("status").innerText =
+          "MetaMask not installed. Please install it to continue.";
+        return;
+      }
+
+      try {
+        // Request account access
+        await window.ethereum.request({ method: "eth_requestAccounts" });
+
+        // Wrap MetaMask as an Ethers provider
+        const tempProvider = new ethers.providers.Web3Provider(window.ethereum, "any");
+
+        // Check if user is on Monad Testnet
+        const network = await tempProvider.getNetwork();
+        if (network.chainId !== MONAD_CHAIN_ID_DEC) {
+          // Prompt user to switch networks
+          await switchToMonadTestnet();
+          // After switching, re-check the chain
+          const newNetwork = await tempProvider.getNetwork();
+          if (newNetwork.chainId !== MONAD_CHAIN_ID_DEC) {
+            // If still not on Monad, abort
+            document.getElementById("status").innerText =
+              "Please manually switch MetaMask to Monad Testnet.";
+            return;
+          }
+        }
+
+        // Now on Monad testnet
+        signer = tempProvider.getSigner();
+        contract = new ethers.Contract(CONTRACT_ADDRESS, CONTRACT_ABI, signer);
+
+        document.getElementById("status").innerText =
+          "Wallet connected on Monad Testnet!";
+      } catch (error) {
+        console.error(error);
+        document.getElementById("status").innerText = "Failed to connect wallet.";
+      }
+    }
+
+    /******************************************
+     * 4. Place Bet
      ******************************************/
     async function placeBet() {
-      const monAmount = document.getElement
+      if (!signer || !contract) {
+        document.getElementById("status").innerText =
+          "Please connect your wallet on Monad testnet first.";
+        return;
+      }
+
+      const monAmount = document.getElementById("monAmount").value;
+      if (!monAmount || monAmount < 1 || monAmount > 5) {
+        document.getElementById("status").innerText =
+          "Enter an amount between 1 and 5 MON.";
+        return;
+      }
+
+      // Convert MON to Wei (assuming 1 MON = 1 ETH for test)
+      const valueInWei = ethers.utils.parseEther(monAmount.toString());
+
+      try {
+        document.getElementById("status").innerText = "Sending transaction...";
+        document.getElementById("result").innerText = "";
+
+        // Call gamble()
+        const txResponse = await contract.gamble({ value: valueInWei });
+        document.getElementById("status").innerText =
+          "Transaction sent! Waiting for confirmation...";
+
+        // Wait for confirmation
+        const receipt = await txResponse.wait();
+        document.getElementById("status").innerText =
+          "Transaction confirmed! Checking result...";
+
+        // Find GambleResult event
+        const event = receipt.events.find(e => e.event === "GambleResult");
+        if (event) {
+          const { player, wager, win, payout } = event.args;
+          if (win) {
+            document.getElementById("result").innerText =
+              `You won! Payout: ${ethers.utils.formatEther(payout)} MON`;
+          } else {
+            document.getElementById("result").innerText =
+              "You lost. Better luck next time!";
+          }
+        } else {
+          document.getElementById("result").innerText =
+            "No GambleResult event found.";
+        }
+      } catch (error) {
+        console.error(error);
+        document.getElementById("status").innerText =
+          "Transaction failed: " + error.message;
+      }
+    }
+
+    // Event Listeners
+    document.getElementById("connectWalletButton").addEventListener("click", connectWallet);
+    document.getElementById("placeBetButton").addEventListener("click", placeBet);
+  </script>
+</body>
+</html>
